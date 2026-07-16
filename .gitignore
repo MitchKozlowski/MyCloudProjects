@@ -1,0 +1,16 @@
+# Terraform - applies across every project folder in this repo
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfvars
+**/crash.log
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/venv/
+**/.pytest_cache/
+
+# Env files
+**/.env
