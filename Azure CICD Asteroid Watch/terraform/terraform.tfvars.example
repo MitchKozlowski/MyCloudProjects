@@ -1,0 +1,8 @@
+# Copy this file to terraform.tfvars and fill in real values.
+# terraform.tfvars is gitignored - it will contain your actual NASA API key.
+
+project_name = "asteroidwatch"
+location     = "East US"
+environment  = "dev"
+
+nasa_api_key = "your_nasa_api_key_here"

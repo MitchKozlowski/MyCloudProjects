@@ -1,0 +1,95 @@
+name: Deploy Asteroid Watch
+
+# Only run this workflow when files inside this project's folder change -
+# this repo holds multiple projects, and we don't want a push to, say,
+# the trading bot project accidentally triggering an Azure deployment.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Azure CICD Asteroid Watch/**"
+
+# Required for OIDC: without this, GitHub won't issue the identity token
+# that Azure's federated credential is set up to trust. This is the whole
+# mechanism that lets us skip storing a client secret.
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_NAME: asteroidwatchacrd93a5c
+  IMAGE_NAME: asteroid-watch
+  PROJECT_DIR: "Azure CICD Asteroid Watch"
+
+jobs:
+  # --- Job 1: run the test suite ---
+  # If this fails, the pipeline stops here. Nothing gets built or deployed
+  # from broken code. This is the actual "Continuous Integration" part of
+  # CI/CD - the gatekeeper we talked about back in Phase 1.5.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: pytest -v
+
+  # --- Job 2: build, push, and deploy ---
+  # Only runs if the "test" job above succeeded (see `needs: test`).
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This authenticates the Azure CLI itself (used below for
+      # `az acr login`) via OIDC - no client secret involved.
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push Docker image
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          az acr login --name ${{ env.ACR_NAME }}
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Terraform Init
+        working-directory: "${{ env.PROJECT_DIR }}/terraform"
+        run: terraform init
+
+      # These ARM_* variables are how the azurerm PROVIDER (used by
+      # `terraform apply` itself) authenticates via OIDC - separate from
+      # the azure/login step above, which only authenticated the `az` CLI.
+      # ARM_USE_OIDC=true tells the provider to look for GitHub's OIDC
+      # token automatically (GitHub exposes it via env vars when
+      # `id-token: write` permission is granted above).
+      - name: Terraform Apply
+        working-directory: "${{ env.PROJECT_DIR }}/terraform"
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          terraform apply -auto-approve \
+            -var="container_image_tag=${{ github.sha }}" \
+            -var="nasa_api_key=${{ secrets.NASA_API_KEY }}"

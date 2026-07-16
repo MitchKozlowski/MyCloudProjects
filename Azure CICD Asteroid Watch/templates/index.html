@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asteroid Watch — Near Earth Objects</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>☄️ Asteroid Watch</h1>
+    <p class="subtitle">Near-Earth objects tracked by NASA, plotted by close-approach date and distance</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <label for="start-date">Start date</label>
+      <input type="date" id="start-date">
+
+      <label for="end-date">End date</label>
+      <input type="date" id="end-date">
+
+      <button id="load-btn">Load Data</button>
+
+      <span id="status"></span>
+    </section>
+
+    <section class="chart-container">
+      <canvas id="asteroid-chart"></canvas>
+    </section>
+
+    <section class="hazardous-list">
+      <h2>⚠️ Potentially Hazardous Asteroids</h2>
+      <table id="hazardous-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Est. Diameter (km)</th>
+            <th>Velocity (km/h)</th>
+            <th>Miss Distance (km)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="no-hazardous" class="hidden">None in this range 🎉</p>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
