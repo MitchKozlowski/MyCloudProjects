@@ -63,6 +63,12 @@ jobs:
       # Contributor), not a storage account access key - this tells the
       # backend to authenticate that way instead of expecting a key.
       ARM_USE_AZUREAD_AUTH: true
+      # Without this, both the backend AND the provider (used later by
+      # `terraform apply`) will detect the ambient Azure CLI session left
+      # behind by the azure/login step and try to use it - failing, since
+      # that session belongs to a service principal, and CLI-based auth
+      # only supports real user accounts.
+      ARM_USE_CLI: false
     steps:
       - uses: actions/checkout@v4
 
@@ -103,6 +109,7 @@ jobs:
           terraform init \
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true" \
+            -backend-config="use_cli=false" \
             -backend-config="client_id=${{ secrets.AZURE_CLIENT_ID }}" \
             -backend-config="tenant_id=${{ secrets.AZURE_TENANT_ID }}" \
             -backend-config="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
