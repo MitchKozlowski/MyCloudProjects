@@ -87,6 +87,16 @@ jobs:
         with:
           terraform_version: "1.7.5"
 
+      # The azure/login step above leaves an active Azure CLI session
+      # behind. Terraform's azurerm backend/provider both auto-detect and
+      # prefer that ambient CLI session over explicit OIDC config - and
+      # since that session belongs to a service principal (not a real
+      # user), CLI-based auth then fails outright. Logging out here forces
+      # Terraform to actually use the OIDC credentials we've configured,
+      # instead of tripping over a leftover session it shouldn't be using.
+      - name: Azure logout (avoid CLI/OIDC auth conflict)
+        run: az logout || true
+
       - name: Terraform Init
         working-directory: "${{ env.PROJECT_DIR }}/terraform"
         run: |
