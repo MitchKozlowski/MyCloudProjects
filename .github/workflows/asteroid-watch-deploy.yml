@@ -48,6 +48,21 @@ jobs:
   build-and-deploy:
     needs: test
     runs-on: ubuntu-latest
+    env:
+      # These need to be visible to EVERY terraform step, not just apply -
+      # `terraform init` also authenticates to Azure (to reach the state
+      # storage backend), and without these it falls back to trying the
+      # Azure CLI session from the login step above - which fails, because
+      # CLI-based auth only supports real user accounts, not the service
+      # principal we're using here.
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_USE_OIDC: true
+      # Our state storage access is granted via RBAC (Storage Blob Data
+      # Contributor), not a storage account access key - this tells the
+      # backend to authenticate that way instead of expecting a key.
+      ARM_USE_AZUREAD_AUTH: true
     steps:
       - uses: actions/checkout@v4
 
@@ -84,11 +99,6 @@ jobs:
       # `id-token: write` permission is granted above).
       - name: Terraform Apply
         working-directory: "${{ env.PROJECT_DIR }}/terraform"
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_USE_OIDC: true
         run: |
           terraform apply -auto-approve \
             -var="container_image_tag=${{ github.sha }}" \
