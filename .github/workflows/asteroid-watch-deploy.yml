@@ -8,6 +8,10 @@ on:
     branches: [main]
     paths:
       - "Azure CICD Asteroid Watch/**"
+  # Lets us trigger a run manually from the Actions tab - useful for cases
+  # like this one, where we changed the workflow file itself, which the
+  # path filter above deliberately doesn't watch.
+  workflow_dispatch:
 
 # Required for OIDC: without this, GitHub won't issue the identity token
 # that Azure's federated credential is set up to trust. This is the whole
