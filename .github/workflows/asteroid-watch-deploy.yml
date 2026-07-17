@@ -89,7 +89,13 @@ jobs:
 
       - name: Terraform Init
         working-directory: "${{ env.PROJECT_DIR }}/terraform"
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_azuread_auth=true" \
+            -backend-config="client_id=${{ secrets.AZURE_CLIENT_ID }}" \
+            -backend-config="tenant_id=${{ secrets.AZURE_TENANT_ID }}" \
+            -backend-config="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
       # These ARM_* variables are how the azurerm PROVIDER (used by
       # `terraform apply` itself) authenticates via OIDC - separate from
